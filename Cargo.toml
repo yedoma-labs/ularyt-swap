@@ -1,0 +1,32 @@
+[package]
+name = "ularyt-swap"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.74"
+authors = ["yedoma-labs"]
+description = "cargo subcommand that swaps unmaintained dependencies (atty, instant, fxhash, number_prefix, paste) for their maintained successors - manifest and source, with a dry-run diff"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yedoma-labs/ularyt-swap"
+homepage = "https://github.com/yedoma-labs/ularyt-swap"
+documentation = "https://docs.rs/ularyt-swap"
+readme = "README.md"
+keywords = ["cargo", "migration", "dependencies", "unmaintained", "codemod"]
+categories = ["development-tools::cargo-plugins", "development-tools"]
+exclude = [
+    ".github/*",
+    ".githooks/*",
+    "release-plz.toml",
+    "target/*",
+]
+
+[lib]
+name = "ularyt"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cargo-ularyt"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
