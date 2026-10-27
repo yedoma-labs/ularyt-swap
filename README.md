@@ -31,6 +31,7 @@ cargo install ularyt-swap      # installs the `cargo-ularyt` binary
 cargo ularyt                   # dry run: lists every swap as a diff, changes nothing
 cargo ularyt --apply           # writes source and manifests, then runs `cargo check`
 cargo ularyt --check           # exit code 1 if anything is found (for CI)
+cargo ularyt --json            # the same plan as JSON (status, reasons, changes); not with --apply
 ```
 
 Dry-run output:
@@ -50,7 +51,7 @@ package `demo`
     retry API differs (used in 2 place(s))
 ```
 
-Options: `--only <crate>` (handle one dependency, e.g. `--only atty`), `--manifest-path <Cargo.toml>`, `--allow-dirty` (by default `--apply` refuses a dirty git tree, so you can always `git diff` or revert), `--source-only`, `--no-verify`.
+Options: `--only <crate>` (handle one dependency, e.g. `--only atty`), `--manifest-path <Cargo.toml>`, `--allow-dirty` (by default `--apply` refuses a dirty git tree, so you can always `git diff` or revert), `--source-only`, `--no-verify`, `--json`.
 
 ## What it changes
 
@@ -74,7 +75,7 @@ Reported only, with the successor the RustSec advisory recommends: `backoff`, `r
 
 ## What is verified
 
-- 18 unit tests (lexer, rewrite rules) and 7 end-to-end tests that run the real binary against throw-away projects, including blocked swaps, comment safety, the dirty-tree refusal and `--check`.
+- 19 unit tests (lexer, rewrite rules, JSON rendering) and 15 end-to-end tests that run the real binary against throw-away projects, including blocked swaps, comment safety, the dirty-tree refusal, `--check` and `--json`.
 - One end-to-end run on a demo crate that uses all five automated crates (including `NumberPrefix::binary`, `FxHashMap::default()` and `pastey::paste!`): after `--apply`, `cargo check` passes.
 - The dry run was run against two public projects that use `atty` (a CLI and a REPL). It found the calls and produced the expected replacements. **It was not compiled there**, and no real-world project has been migrated end to end yet.
 

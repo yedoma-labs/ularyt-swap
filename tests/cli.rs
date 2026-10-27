@@ -186,3 +186,113 @@ fn only_rejects_an_unknown_crate() {
         stderr(&out)
     );
 }
+
+fn json_of(o: &Output) -> serde_json::Value {
+    assert!(o.status.success(), "{}", stderr(o));
+    serde_json::from_slice(&o.stdout)
+        .unwrap_or_else(|e| panic!("stdout is not JSON: {e}\n{}", stdout(o)))
+}
+
+#[test]
+fn json_describes_a_ready_swap() {
+    let p = Project::new(
+        "instant = \"0.1\"",
+        "use instant::Instant;\npub fn t() -> Instant { Instant::now() }\n",
+    );
+    let v = json_of(&p.run(&["--json"]));
+    assert_eq!(v["packages"], 1);
+    assert_eq!(v["summary"]["ready"], 1);
+    assert_eq!(v["summary"]["blocked"], 0);
+    let item = &v["items"][0];
+    assert_eq!(item["package"], "demo");
+    assert_eq!(item["crate"], "instant");
+    assert_eq!(item["successor"], "web-time");
+    assert_eq!(item["advisory"], "RUSTSEC-2024-0384");
+    assert_eq!(item["status"], "ready");
+    assert_eq!(item["uses"], 1);
+    assert_eq!(item["changes"][0]["file"], "src/lib.rs");
+    assert_eq!(item["changes"][0]["line"], 1);
+    assert_eq!(item["changes"][0]["before"], "use instant::Instant;");
+    assert_eq!(item["changes"][0]["after"], "use web_time::Instant;");
+    assert_eq!(
+        item["manifest_commands"][1],
+        serde_json::json!(["add", "-p", "demo", "web-time"])
+    );
+    assert_eq!(
+        p.lib(),
+        "use instant::Instant;\npub fn t() -> Instant { Instant::now() }\n"
+    );
+}
+
+#[test]
+fn json_carries_the_reasons_for_a_blocked_swap() {
+    let p = Project::new(
+        "instant = \"0.1\"",
+        "pub fn t() -> f64 { instant::now() }\n",
+    );
+    let v = json_of(&p.run(&["--json"]));
+    let item = &v["items"][0];
+    assert_eq!(item["status"], "blocked");
+    assert_eq!(v["summary"]["blocked"], 1);
+    assert!(
+        item["reasons"][0].as_str().unwrap().contains("`now`"),
+        "{v}"
+    );
+    assert_eq!(item["manifest_commands"], serde_json::json!([]));
+}
+
+#[test]
+fn json_reports_manual_and_unused_items() {
+    let p = Project::new(
+        "backoff = \"0.4\"\npaste = \"1\"\nfxhash = \"0.1\"",
+        "pub fn r() { let _ = backoff::ExponentialBackoff::default(); }\n",
+    );
+    let v = json_of(&p.run(&["--json"]));
+    assert_eq!(v["summary"]["manual"], 1);
+    assert_eq!(v["summary"]["no_usage"], 2);
+    let manual = v["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|i| i["crate"] == "backoff")
+        .unwrap();
+    assert_eq!(manual["status"], "manual");
+    assert_eq!(manual["uses"], 1);
+    assert_eq!(manual["changes"], serde_json::json!([]));
+}
+
+#[test]
+fn json_is_empty_when_nothing_is_found() {
+    let p = Project::new("", "pub fn f() {}\n");
+    let v = json_of(&p.run(&["--json"]));
+    assert_eq!(v["items"], serde_json::json!([]));
+    assert_eq!(v["summary"]["ready"], 0);
+    assert_eq!(v["packages"], 1);
+}
+
+#[test]
+fn json_respects_only_and_check() {
+    let p = Project::new(
+        "instant = \"0.1\"\npaste = \"1\"",
+        "pub fn f() { paste::paste! { } let _ = instant::Instant::now(); }\n",
+    );
+    let v = json_of(&p.run(&["--json", "--only", "paste"]));
+    assert_eq!(v["items"].as_array().unwrap().len(), 1);
+    assert_eq!(v["items"][0]["crate"], "paste");
+    assert_eq!(p.run(&["--json", "--check"]).status.code(), Some(1));
+    let clean = Project::new("", "pub fn f() {}\n");
+    assert_eq!(clean.run(&["--json", "--check"]).status.code(), Some(0));
+}
+
+#[test]
+fn json_is_refused_together_with_apply() {
+    let p = Project::new("paste = \"1\"", "pub fn f() { paste::paste! { } }\n");
+    let out = p.run(&["--json", "--apply", "--source-only", "--allow-dirty"]);
+    assert_eq!(out.status.code(), Some(2));
+    assert!(
+        stderr(&out).contains("cannot be combined with --apply"),
+        "{}",
+        stderr(&out)
+    );
+    assert!(p.lib().contains("paste::paste!"));
+}

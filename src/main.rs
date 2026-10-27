@@ -23,6 +23,7 @@ OPTIONS:
     --source-only           with --apply: rewrite source only, leave manifests
     --only <CRATE>          only handle this unmaintained dependency (e.g. atty)
     --no-verify             with --apply: skip the final `cargo check`
+    --json                  print the plan as JSON (for CI); not with --apply
     -h, --help              show this help
     -V, --version           show the version
 ";
@@ -34,6 +35,7 @@ struct Args {
     allow_dirty: bool,
     source_only: bool,
     no_verify: bool,
+    json: bool,
     manifest_path: Option<PathBuf>,
     only: Option<String>,
 }
@@ -52,6 +54,7 @@ fn parse() -> Result<Option<Args>, String> {
             "--allow-dirty" => args.allow_dirty = true,
             "--source-only" => args.source_only = true,
             "--no-verify" => args.no_verify = true,
+            "--json" => args.json = true,
             "--only" => {
                 let v = it.next().ok_or("--only needs a crate name")?;
                 args.only = Some(v);
@@ -78,6 +81,9 @@ fn run() -> Result<ExitCode, String> {
     let Some(args) = parse()? else {
         return Ok(ExitCode::SUCCESS);
     };
+    if args.json && args.apply {
+        return Err("--json cannot be combined with --apply".into());
+    }
     let packages = project::load(args.manifest_path.as_deref())?;
     let mut plan = plan::build(&packages)?;
     if let Some(name) = &args.only {
@@ -88,7 +94,11 @@ fn run() -> Result<ExitCode, String> {
             ));
         }
     }
-    print!("{}", report::render(&plan));
+    if args.json {
+        println!("{}", report::json(&plan));
+    } else {
+        print!("{}", report::render(&plan));
+    }
 
     if args.apply {
         let root = match &args.manifest_path {
