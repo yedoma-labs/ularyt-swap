@@ -50,7 +50,7 @@ package `demo`
     retry API differs (used in 2 place(s))
 ```
 
-Options: `--manifest-path <Cargo.toml>`, `--allow-dirty` (by default `--apply` refuses a dirty git tree, so you can always `git diff` or revert), `--source-only`, `--no-verify`.
+Options: `--only <crate>` (handle one dependency, e.g. `--only atty`), `--manifest-path <Cargo.toml>`, `--allow-dirty` (by default `--apply` refuses a dirty git tree, so you can always `git diff` or revert), `--source-only`, `--no-verify`.
 
 ## What it changes
 

@@ -161,3 +161,28 @@ fn comments_and_strings_survive() {
     assert!(lib.contains("\"instant::Instant\""));
     assert!(lib.contains("web_time::Instant::now()"));
 }
+
+#[test]
+fn only_limits_the_report_to_one_crate() {
+    let p = Project::new(
+        "instant = \"0.1\"\npaste = \"1\"",
+        "pub fn f() { paste::paste! { } let _ = instant::Instant::now(); }\n",
+    );
+    let out = p.run(&["--only", "paste"]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    let text = stdout(&out);
+    assert!(text.contains("paste -> pastey"), "{text}");
+    assert!(!text.contains("instant -> web-time"), "{text}");
+}
+
+#[test]
+fn only_rejects_an_unknown_crate() {
+    let p = Project::new("paste = \"1\"", "pub fn f() {}\n");
+    let out = p.run(&["--only", "serde"]);
+    assert_eq!(out.status.code(), Some(2));
+    assert!(
+        stderr(&out).contains("not in the catalogue"),
+        "{}",
+        stderr(&out)
+    );
+}

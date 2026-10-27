@@ -21,6 +21,7 @@ OPTIONS:
     --manifest-path <PATH>  Cargo.toml of the workspace or package
     --allow-dirty           apply even if the git working tree has changes
     --source-only           with --apply: rewrite source only, leave manifests
+    --only <CRATE>          only handle this unmaintained dependency (e.g. atty)
     --no-verify             with --apply: skip the final `cargo check`
     -h, --help              show this help
     -V, --version           show the version
@@ -34,6 +35,7 @@ struct Args {
     source_only: bool,
     no_verify: bool,
     manifest_path: Option<PathBuf>,
+    only: Option<String>,
 }
 
 fn parse() -> Result<Option<Args>, String> {
@@ -50,6 +52,10 @@ fn parse() -> Result<Option<Args>, String> {
             "--allow-dirty" => args.allow_dirty = true,
             "--source-only" => args.source_only = true,
             "--no-verify" => args.no_verify = true,
+            "--only" => {
+                let v = it.next().ok_or("--only needs a crate name")?;
+                args.only = Some(v);
+            }
             "--manifest-path" => {
                 let v = it.next().ok_or("--manifest-path needs a value")?;
                 args.manifest_path = Some(PathBuf::from(v));
@@ -73,7 +79,15 @@ fn run() -> Result<ExitCode, String> {
         return Ok(ExitCode::SUCCESS);
     };
     let packages = project::load(args.manifest_path.as_deref())?;
-    let plan = plan::build(&packages)?;
+    let mut plan = plan::build(&packages)?;
+    if let Some(name) = &args.only {
+        plan.items.retain(|i| i.rule.old == name);
+        if plan.items.is_empty() {
+            return Err(format!(
+                "`{name}` is not in the catalogue or not a dependency"
+            ));
+        }
+    }
     print!("{}", report::render(&plan));
 
     if args.apply {
