@@ -194,11 +194,14 @@ pub fn manifest_commands(item: &Item) -> Vec<Vec<String>> {
     commands
 }
 
+/// Relative display path with `/` separators on every platform, so reports are
+/// identical on Windows and Unix.
 pub fn short(base: &Path, path: &Path) -> String {
     path.strip_prefix(base)
         .unwrap_or(path)
         .display()
         .to_string()
+        .replace('\\', "/")
 }
 
 fn read_sources(dir: &Path) -> Result<Vec<(PathBuf, String)>, String> {

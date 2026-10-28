@@ -68,8 +68,11 @@ pub fn json(plan: &Plan) -> String {
 }
 
 fn json_item(item: &Item) -> JsonItem {
+    // Only a ready swap is applied; a blocked one changes nothing, so it lists
+    // no changes (the translatable lines are not written either).
     let mut changes = Vec::new();
-    for f in &item.files {
+    let ready = item.status == Status::Ready;
+    for f in item.files.iter().filter(|_| ready) {
         for c in &f.rewrite.changes {
             changes.push(JsonChange {
                 file: short(&item.package_dir, &f.path),

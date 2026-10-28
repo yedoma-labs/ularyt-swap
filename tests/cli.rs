@@ -242,6 +242,20 @@ fn json_carries_the_reasons_for_a_blocked_swap() {
 }
 
 #[test]
+fn json_lists_no_changes_for_a_blocked_swap() {
+    // The first line could be rewritten on its own, but the swap is blocked as
+    // a whole, so CI must not see a change that `--apply` would never make.
+    let p = Project::new(
+        "instant = \"0.1\"",
+        "use instant::Instant;\npub fn t() -> f64 { let _ = Instant::now(); instant::now() }\n",
+    );
+    let v = json_of(&p.run(&["--json"]));
+    let item = &v["items"][0];
+    assert_eq!(item["status"], "blocked");
+    assert_eq!(item["changes"], serde_json::json!([]));
+}
+
+#[test]
 fn json_reports_manual_and_unused_items() {
     let p = Project::new(
         "backoff = \"0.4\"\npaste = \"1\"\nfxhash = \"0.1\"",
