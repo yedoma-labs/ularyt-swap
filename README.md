@@ -13,8 +13,6 @@
 [![License](https://img.shields.io/crates/l/ularyt-swap.svg)](LICENSE-MIT)
 [![Conventional Commits](https://img.shields.io/badge/commits-conventional-fe5196?logo=conventionalcommits&logoColor=white)](https://www.conventionalcommits.org/)
 
-*ularyt* (уларыт; Sakha) = "to change"
-
 **Status: prototype.** Five swaps are automated, thirteen more are reported. See [What is verified](#what-is-verified) before you trust it.
 
 ## Why
